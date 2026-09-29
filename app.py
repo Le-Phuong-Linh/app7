@@ -20,7 +20,7 @@ st.write("Upload your glossary, text chapter files, enter your Gemini API Key, s
 # =====================================================
 st.sidebar.header("Configuration")
 api_key_input = st.sidebar.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
-model_input = st.sidebar.text_input("Gemini Model Name", value="gemini-2.5-flash")
+model_input = st.sidebar.text_input("Gemini Model Name", value="gemini-3-flash-preview")
 max_chars = st.sidebar.slider("Chunk Size (Chars)", 1000, 5000, 2500, step=500)
 
 # Footnote mode selector choice
