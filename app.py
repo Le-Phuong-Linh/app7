@@ -13,15 +13,21 @@ from google.genai.errors import ClientError
 st.set_page_config(page_title="Literary Chapter Translator", page_icon="📚", layout="centered")
 
 st.title("📚 Chinese-to-Russian Literary Chapter Translator")
-st.write("Upload your glossary, text chapter files, enter your Gemini API Key, and translate everything into natural, publication-ready Russian prose.")
+st.write("Upload your glossary, text chapter files, enter your Gemini API Key, select your footnote preference, and translate everything into natural, publication-ready Russian prose.")
 
 # =====================================================
 # SIDEBAR / CONFIGURATION INPUTS
 # =====================================================
 st.sidebar.header("Configuration")
 api_key_input = st.sidebar.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
-model_input = st.sidebar.text_input("Gemini Model Name", value="gemini-3-flash-preview")
+model_input = st.sidebar.text_input("Gemini Model Name", value="gemini-2.5-flash")
 max_chars = st.sidebar.slider("Chunk Size (Chars)", 1000, 5000, 2500, step=500)
+
+# Footnote mode selector choice
+footnote_mode = st.sidebar.radio(
+    "Footnote Mode",
+    ["No Footnotes", "Up to 2 Footnotes"]
+)
 
 # =====================================================
 # FILE UPLOADERS
@@ -33,10 +39,11 @@ st.subheader("2. Upload Chapter Text Files")
 uploaded_files = st.file_uploader("Upload .txt chapter files", type=["txt"], accept_multiple_files=True)
 
 # =====================================================
-# SYSTEM PROMPT BUILDER
+# SYSTEM PROMPT BUILDER (DYNAMIC BASED ON MODE)
 # =====================================================
-def get_system_prompt(glossary_text):
-    return f"""You are a professional literary translator.
+def get_system_prompt(glossary_text, mode):
+    if mode == "No Footnotes":
+        return f"""You are a professional literary translator.
 
 Translate the following Chinese text into natural, fluent Russian.
 
@@ -76,6 +83,54 @@ FORMS OF ADDRESS & TITLES (CRITICAL)
 - Preserve honorific structure and hierarchy exactly as in the source text.
 - Use one consistent transliteration for each title throughout the fragment.
 - The words “матушка”, “батюшка”, “барышня”, “вдовствующая императрица”, “папа”, “князь”, “госпожа”, “рыцарь”, “перекантоваться”, “богатырь” must never be used; use appropriate Chinese transliteration if the original uses a form of address.
+- Avoid the words “вспыхнуло”, “карета”, “ларец”, “экипаж”. Use more descriptive or varied alternatives.
+- Personal pronouns: translate nin (您) strictly as вы and ni (你) strictly as ты. Do not confuse or swap these pronouns during translation.
+
+Do NOT summarize, censor, or explain anything outside footnotes.
+"""
+    else:  # Up to 2 Footnotes
+        return f"""You are a professional literary translator.
+
+Translate the following Chinese text into natural, fluent Russian.
+
+Glossary (mandatory, exact usage):
+{glossary_text}
+
+IMPORTANT CONTEXT:
+This is a fragment extracted from a larger work.
+Do NOT attempt to continue, complete, or resolve it.
+
+CRITICAL RULES:
+- Translate ONLY the provided text.
+- Do NOT add, continue, or invent any content.
+- Stop EXACTLY where the source text stops.
+- Preserve paragraph structure.
+- Output ONLY the Russian translation.
+
+STYLE AND DIALOGUE:
+- Format all dialogue according to Russian punctuation rules:
+  each spoken line must begin with an em dash (—), not quotation marks.
+- Preserve tone, pacing, and emotional nuance.
+- Group Subjects: Avoid "A, B, and C—all did X." Use "A, B, and C did X."
+- Swearing and offensive language are strictly prohibited.
+- Conditional Structures: Avoid the participial construction "Знай [subject], сделал бы" (e.g., Знай он правду, он бы пришел). Instead, use the standard conditional: "Если бы [subject] знал(а/и/о), то..." (e.g., Если бы он знал правду, он бы пришёл).
+
+IDIOMS AND PROVERBS:
+- Chinese idioms, chengyu, and proverbs must NOT be replaced with Russian equivalents. 
+- Preserve their literal imagery in Russian. 
+- When translating or writing text in Russian that includes specialized terms, idioms, or Chinese idioms (chengyu), add numbered footnote references directly in the main text (e.g., ¹, ²) wherever clarification is needed. At the end of the text, provide the corresponding footnotes using this exact format:
+[Superscript Number] [Russian translation/term] ([Original Chinese], [pinyin]) — [Explanation in Russian].
+- Footnotes must be concise and informative. You can include a maximum of two footnotes per text.
+
+FORMS OF ADDRESS & TITLES (CRITICAL)
+- Transliterate the following chinese titles and forms of address into russian phonetics using the palladius system, retaining the original sounds rather than translating the meanings: гунян, ван-е, ланцзюнь, фужэнь, момо, сяонянцзы, нян (мать), де (отец), лаофужэнь, а-нян, а-де, гэгэ, цзецзе, мэймэй, диди, and гунцзы. Do not replace them with russian semantic equivalents (e.g. «господин», «князь», «госпожа», «барышня»).
+- When used with a name, these specific transliterated titles must be placed after the name and separated by a hyphen.
+- All the other chinese titles and forms of address, including gugu, must be translated into russian. For example, gugu should be translated as тётя.
+- Do NOT apply any special formatting (no bold, italics, quotation marks, or capitalization, no * symbol).
+- Do NOT keep Latin transliteration in the output.
+- Preserve honorific structure and hierarchy exactly as in the source text.
+- Use one consistent transliteration for each title throughout the fragment.
+- The words “матушка”, “батюшка”, “барышня”, “вдовствующая императрица”, “папа”, “князь”, “госпожа”, “рыцарь”, “перекантоваться”, “богатырь”, “магический”, “колдун”, “маг” must never be used; use appropriate Chinese transliteration if the original uses a form of address.
 - Avoid the words “вспыхнуло”, “карета”, “ларец”, “экипаж”. Use more descriptive or varied alternatives.
 - Personal pronouns: translate nin (您) strictly as вы and ni (你) strictly as ты. Do not confuse or swap these pronouns during translation.
 
@@ -124,8 +179,8 @@ def is_meta_response(text: str) -> bool:
         or "исходный текст" in lower
     )
 
-def translate_text(client, model_name, source_text, glossary_text, max_chars, status_text):
-    system_prompt = get_system_prompt(glossary_text)
+def translate_text(client, model_name, source_text, glossary_text, max_chars, mode, status_text):
+    system_prompt = get_system_prompt(glossary_text, mode)
     translated_chunks = []
     chunks = chunk_text(source_text, max_chars)
     
@@ -200,7 +255,7 @@ if st.button("Start Translation"):
             st.error(f"Failed to initialize Gemini Client: {e}")
             st.stop()
             
-        st.info("Starting translation process...")
+        st.info(f"Starting translation process using mode: **{footnote_mode}**...")
         progress_bar = st.progress(0)
         status_text = st.empty()
         
@@ -216,7 +271,7 @@ if st.button("Start Translation"):
                 source_text = f.read()
                 
             try:
-                result = translate_text(client, model_input, source_text, glossary_text, max_chars, status_text)
+                result = translate_text(client, model_input, source_text, glossary_text, max_chars, footnote_mode, status_text)
                 out_path = output_dir / filename
                 with open(out_path, "w", encoding="utf-8") as f:
                     f.write(result)
