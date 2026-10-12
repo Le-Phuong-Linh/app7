@@ -29,6 +29,15 @@ footnote_mode = st.sidebar.radio(
     ["No Footnotes", "Up to 2 Footnotes"]
 )
 
+# Кнопка для очистки предыдущих файлов и сессии
+if st.sidebar.button("🧹 Clear All Stored Files"):
+    if Path("input").exists():
+        shutil.rmtree("input")
+    if Path("output").exists():
+        shutil.rmtree("output")
+    st.sidebar.success("Stored files cleared successfully!")
+    st.rerun()
+
 # =====================================================
 # FILE UPLOADERS
 # =====================================================
@@ -233,6 +242,14 @@ if st.button("Start Translation"):
     else:
         input_dir = Path("input")
         output_dir = Path("output")
+        
+        # Полная очистка папок input и output перед новым запуском, 
+        # чтобы обрабатывать строго только те файлы, что загружены сейчас
+        if input_dir.exists():
+            shutil.rmtree(input_dir)
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
+            
         input_dir.mkdir(exist_ok=True)
         output_dir.mkdir(exist_ok=True)
         
@@ -268,6 +285,7 @@ if st.button("Start Translation"):
             file_path = input_dir / filename
             
             with open(file_path, "r", encoding="utf-8") as f:
+                source_text = f. глread() if hasattr(f, 'read') else f.read() # Исправлено на standard read
                 source_text = f.read()
                 
             try:
