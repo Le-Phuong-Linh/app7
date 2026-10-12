@@ -243,8 +243,7 @@ if st.button("Start Translation"):
         input_dir = Path("input")
         output_dir = Path("output")
         
-        # Полная очистка папок input и output перед новым запуском, 
-        # чтобы обрабатывать строго только те файлы, что загружены сейчас
+        # Полная очистка папок input и output перед новым запуском
         if input_dir.exists():
             shutil.rmtree(input_dir)
         if output_dir.exists():
@@ -285,7 +284,6 @@ if st.button("Start Translation"):
             file_path = input_dir / filename
             
             with open(file_path, "r", encoding="utf-8") as f:
-                source_text = f. глread() if hasattr(f, 'read') else f.read() # Исправлено на standard read
                 source_text = f.read()
                 
             try:
